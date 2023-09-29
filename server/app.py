@@ -1,34 +1,41 @@
 #!/usr/bin/env python3
 
-from flask import Flask, make_response, jsonify, session
-from flask_migrate import Migrate
-
-from models import db, Article, User
+from flask import Flask, request, jsonify, session
+from flask_session import Session
 
 app = Flask(__name__)
-app.secret_key = b'Y\xf1Xz\x00\xad|eQ\x80t \xca\x1a\x10K'
-app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///app.db'
-app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
-app.json.compact = False
 
-migrate = Migrate(app, db)
+# Configure the session
+app.config['SESSION_TYPE'] = 'filesystem'
+Session(app)
 
-db.init_app(app)
+# Define a secret key for session management
+app.secret_key = 'your_secret_key'
 
-@app.route('/clear')
+# Initialize the page_views session variable
+@app.before_request
+def before_request():
+    session.setdefault('page_views', 0)
+
+# Define a route for viewing articles
+@app.route('/articles/<int:id>', methods=['GET'])
+def view_article(id):
+    # Increment the page_views
+    session['page_views'] += 1
+
+    # Check if the user has viewed more than 3 pages
+    if session['page_views'] > 3:
+        return jsonify({'message': 'Maximum pageview limit reached'}), 401
+
+    # Return the article data (you should replace this with your actual article data)
+    article_data = {'id': id, 'title': 'Article Title', 'content': 'Article Content'}
+    return jsonify(article_data)
+
+# Define an endpoint to clear the session
+@app.route('/clear', methods=['POST'])
 def clear_session():
     session['page_views'] = 0
-    return {'message': '200: Successfully cleared session data.'}, 200
-
-@app.route('/articles')
-def index_articles():
-
-    pass
-
-@app.route('/articles/<int:id>')
-def show_article(id):
-
-    pass
+    return jsonify({'message': 'Session cleared'})
 
 if __name__ == '__main__':
-    app.run(port=5555)
+    app.run(debug=True)
